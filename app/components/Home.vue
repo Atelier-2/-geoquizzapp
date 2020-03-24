@@ -17,9 +17,15 @@
 
 <script>
 import * as camera from "nativescript-camera";
+import * as imagepicker from "nativescript-imagepicker";
+
 import { Image } from "tns-core-modules/ui/image";
-//Modal
-import ModalInfo from "./ModalInfo";
+import { isAndroid, isIOS, device, screen } from "tns-core-modules/platform";
+
+const fileSystemModule = require("tns-core-modules/file-system");
+const bghttp = require("nativescript-background-http");
+const session = bghttp.session("image-upload");
+const { alert, confirm, prompt, login, action, inputType } = require("tns-core-modules/ui/dialogs");
                 
     export default {
         computed: {
@@ -27,33 +33,156 @@ import ModalInfo from "./ModalInfo";
                 return "Prendre une photo";
             }
         },
-
+        data(){
+            return {
+                 images: [],
+                 is_sending: false,
+                 totalBytes: 0,
+                 currentProgress: 0,
+                 currentBytes: 0
+            }
+        },
         methods: {
-             takePicture() {                 
-                 console.log("taped")
-                //Permissions
-                const camera = require("nativescript-camera"); // Requiring the plugin module
-                // Or import only a specific class/method/property  of the plugin
-                const requestPermissions = require("nativescript-camera").requestPermissions; // Requiring the needed code
-                requestPermissions();
+             takePicture() {           
+                      camera.requestPermissions()
+                        .then(() => {
 
-                //Var camera
-                var imageModule = require("tns-core-modules/ui/image");
-                //Options d'image
-                var options = { width: 300, height: 300, keepAspectRatio: false, saveToGallery: true };
-                
-                camera.takePicture(options)
-                .then(function (imageAsset) {
-                    this.$showModal(ModalInfo);
-                    console.log("Result is an image asset instance");
-                    var image = new imageModule.Image();
-                    image.src = imageAsset;
-                }).catch(function (err) {
-                    console.log("Error -> " + err.message);
-                });
-                
-                //console.log("take a pic");
-             }
+                        camera.takePicture({
+                            width: 300,
+                            height: 300,
+                            keepAspectRatio: true,
+                            saveToGallery: true
+                            })
+                            .then( imageAsset => {
+
+                            //API ImgBB
+                            const api_key = "4395f03bb6df4554e8bf40506089c68f";
+
+                            //Verification of Key
+                            if (api_key === "") {
+                                this.is_sending = false;
+                                alert("Please set your ImgBB API key");
+                                return;
+                            }else{
+                                console.log("Token API: OK")
+                            }
+
+                            //Image
+                            let img = new Image();
+                            img.src = imageAsset;
+
+                            const url = "https://api.imgbb.com/1/upload";
+                            const file_size_limit = 32000000; //32MB = 32 000 000 bytes
+                            
+                            let file_path = "";
+
+                            if (isAndroid) file_path = img.src._android;
+                            else if (isIOS) file_path = img.src._ios;
+
+                            if (file_path === "" || file_path === undefined) {
+                                this.is_sending = false;
+                                alert("Can't find file");
+                                return;
+                            }
+
+                            const file_name = file_path.substr(file_path.lastIndexOf("/") + 1);
+
+                            const exists = fileSystemModule.File.exists(file_path);
+
+                            if (!exists) {
+                                this.is_sending = false;
+                                alert("File does not exist");
+                                return;
+                            }
+
+                            const file = fileSystemModule.File.fromPath(file_path);
+                            const file_size = file.size; //Gets the size in bytes of the file.
+
+                            if (file_size >= file_size_limit) {
+                                this.is_sending = false;
+                                alert("File size must be less than " + file_size_limit + "MB");
+                                return;
+                            }
+
+                            this.is_sending = true;
+
+                            const request = {
+                                url: url + "?key=" + api_key,
+                                method: "POST",
+                                headers: {
+                                "Content-Type": "application/octet-stream"
+                                },
+                                description: "Uploading " + file_name
+                            };
+
+                            const params = [
+                                { name: "image", filename: file_path, mimeType: "image/jpeg" }
+                            ];
+
+                            const task = session.multipartUpload(params, request);
+
+                            task.on("progress", this.progressHandler);
+                            task.on("error", this.errorHandler);
+                            task.on("responded", this.respondedHandler);
+                            task.on("complete", this.completeHandler);
+                            task.on("cancelled", this.cancelledHandler); // Android only
+
+                            //Guardar imagen en arreglo
+                            this.images.push(img);
+                            //Alert
+                                alert({
+                                    title: "Félicitations",
+                                    message: "La photo a été enregistré correctement.",
+                                    okButtonText: "Accepter 😊"
+                                }).then(() => {
+                                    console.log("The user closed the alert.");
+                                });
+
+                            })
+                        })       
+
+            //End Take Picture
+            },
+            
+            progressHandler(e) {
+            this.totalBytes = Number(e.totalBytes);
+            this.currentBytes = Number(e.currentBytes);
+
+            if (this.currentBytes && this.totalBytes) {
+                this.currentProgress = (this.currentBytes / this.totalBytes) * 100;
+            }
+            },
+            errorHandler(e) {
+            this.is_sending = false;
+            console.log("received " + e.responseCode + " code.");
+            alert(
+                `An Error has occured  (Error code : "${e.responseCode}"). Image has not been uploaded !`
+            );
+            },
+            respondedHandler(e) {
+            this.is_sending = false;
+            const result = JSON.parse(e.data);
+
+            const uploaded_image = result.data;
+
+            console.log(uploaded_image.url); //URL to save
+
+            alert({
+                title: "Success",
+                message: `Image has been uploaded ! Here is it's url : ${uploaded_image.url}`,
+                okButtonText: "OK"
+            });
+            },
+            completeHandler(e) {
+            this.is_sending = false;
+            const serverResponse = e.response;
+            },
+            cancelledHandler(e) {
+            this.is_sending = false;
+            alert("upload cancelled");
+            }
+
+        //End methods
         }
     };
 </script>
