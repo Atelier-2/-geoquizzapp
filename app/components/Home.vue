@@ -167,11 +167,11 @@ const { alert, confirm, prompt, login, action, inputType } = require("tns-core-m
 
             console.log(uploaded_image.url); //URL to save
 
-            alert({
+            /*alert({
                 title: "Success",
                 message: `Image has been uploaded ! Here is it's url : ${uploaded_image.url}`,
                 okButtonText: "OK"
-            });
+            });*/
             },
             completeHandler(e) {
             this.is_sending = false;
