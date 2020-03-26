@@ -18,6 +18,7 @@
 <script>
 import * as camera from "nativescript-camera";
 import * as imagepicker from "nativescript-imagepicker";
+import axios from 'axios';
 
 import { Image } from "tns-core-modules/ui/image";
 import { isAndroid, isIOS, device, screen } from "tns-core-modules/platform";
@@ -63,8 +64,6 @@ const { alert, confirm, prompt, login, action, inputType } = require("tns-core-m
                                 this.is_sending = false;
                                 alert("Please set your ImgBB API key");
                                 return;
-                            }else{
-                                console.log("Token API: OK")
                             }
 
                             //Image
@@ -119,6 +118,22 @@ const { alert, confirm, prompt, login, action, inputType } = require("tns-core-m
                                 { name: "image", filename: file_path, mimeType: "image/jpeg" }
                             ];
 
+                           
+                            //Axios
+                            /*axios
+                            .post("http://docketu.iutnc.univ-lorraine.fr:44280/photos/",{
+                                description : file_name,
+                                long : "6.169280",
+                                lat : "48.1456298",
+                                url : file_path,
+                                id_serie : 1
+                            })
+                            .then((response) => {
+                                console.log(response.data)
+                            }).catch((response) => {
+                                console.log(response)
+                            })*/
+
                             const task = session.multipartUpload(params, request);
 
                             task.on("progress", this.progressHandler);
@@ -126,6 +141,20 @@ const { alert, confirm, prompt, login, action, inputType } = require("tns-core-m
                             task.on("responded", this.respondedHandler);
                             task.on("complete", this.completeHandler);
                             task.on("cancelled", this.cancelledHandler); // Android only
+                            
+                            //Axios
+                            axios.post("http://docketu.iutnc.univ-lorraine.fr:44280/photos/", {
+                                description : "PhotoTest",
+                                long : "6.169280",
+                                lat : "48.1456298",
+                                url : "https://www.planetware.com/photos-large/F/france-nancy-ecole-de-nancy-museum.jpg",
+                                id_serie : 1
+                            })
+                            .then((response) => {
+                                console.log(response.data)
+                            }).catch((response) => {
+                                console.log(response)
+                            })
 
                             //Guardar imagen en arreglo
                             this.images.push(img);
@@ -164,8 +193,11 @@ const { alert, confirm, prompt, login, action, inputType } = require("tns-core-m
             const result = JSON.parse(e.data);
 
             const uploaded_image = result.data;
-
-            console.log(uploaded_image.url); //URL to save
+            
+            console.log("############")
+            console.log( "description : " + uploaded_image.id)
+            console.log( "url : " + uploaded_image.url)
+            console.log("############")
 
             /*alert({
                 title: "Success",
