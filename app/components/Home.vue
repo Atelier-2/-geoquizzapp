@@ -16,13 +16,17 @@
 </template>
 
 <script>
+//Import Nativescript puglins
 import * as camera from "nativescript-camera";
 import * as imagepicker from "nativescript-imagepicker";
+import * as geolocation from "nativescript-geolocation";
 import axios from 'axios';
 
 import { Image } from "tns-core-modules/ui/image";
 import { isAndroid, isIOS, device, screen } from "tns-core-modules/platform";
+import { Accuracy } from "tns-core-modules/ui/enums"; // used to describe at what accuracy the location should be get
 
+//Global variables
 const fileSystemModule = require("tns-core-modules/file-system");
 const bghttp = require("nativescript-background-http");
 const session = bghttp.session("image-upload");
@@ -44,8 +48,12 @@ const { alert, confirm, prompt, login, action, inputType } = require("tns-core-m
             }
         },
         methods: {
+            //Method to take a photo and upload to imgBB
              takePicture() {           
-                      camera.requestPermissions()
+                    
+                    //Permission GeoLocalisation and Camera
+                    geolocation.enableLocationRequest()
+                    camera.requestPermissions()
                         .then(() => {
 
                         camera.takePicture({
@@ -70,6 +78,7 @@ const { alert, confirm, prompt, login, action, inputType } = require("tns-core-m
                             let img = new Image();
                             img.src = imageAsset;
 
+                            //ImgBB API
                             const url = "https://api.imgbb.com/1/upload";
                             const file_size_limit = 32000000; //32MB = 32 000 000 bytes
                             
@@ -105,6 +114,7 @@ const { alert, confirm, prompt, login, action, inputType } = require("tns-core-m
 
                             this.is_sending = true;
 
+                            //Nativescript-background-http implementation to upload the image taked to imgBB
                             const request = {
                                 url: url + "?key=" + api_key,
                                 method: "POST",
@@ -142,23 +152,11 @@ const { alert, confirm, prompt, login, action, inputType } = require("tns-core-m
                             task.on("complete", this.completeHandler);
                             task.on("cancelled", this.cancelledHandler); // Android only
                             
-                            //Axios
-                            axios.post("http://docketu.iutnc.univ-lorraine.fr:44280/photos/", {
-                                description : "PhotoTest",
-                                long : "6.169280",
-                                lat : "48.1456298",
-                                url : "https://www.planetware.com/photos-large/F/france-nancy-ecole-de-nancy-museum.jpg",
-                                id_serie : 1
-                            })
-                            .then((response) => {
-                                console.log(response.data)
-                            }).catch((response) => {
-                                console.log(response)
-                            })
 
-                            //Guardar imagen en arreglo
+                            //Saving image localy
                             this.images.push(img);
-                            //Alert
+                            
+                            //Alert if taked and upload image are success.
                                 alert({
                                     title: "Félicitations",
                                     message: "La photo a été enregistré correctement.",
@@ -171,6 +169,36 @@ const { alert, confirm, prompt, login, action, inputType } = require("tns-core-m
                         })       
 
             //End Take Picture
+            },
+
+            //Méthode pour tester la connectivité d'Axios vers Docketu.
+            axios() {
+                
+                var geolocation = require("nativescript-geolocation");
+
+                //Permission
+                geolocation.enableLocationRequest();
+
+                // Get current location with high accuracy
+                geolocation.getCurrentLocation({ desiredAccuracy: Accuracy.high, maximumAge: 5000, timeout: 20000 })
+                .then((response) => {
+                    console.log("Latitude: "+response.latitude)
+                    console.log("Longitude: "+response.longitude)
+                })
+                
+                /*axios.post("http://docketu.iutnc.univ-lorraine.fr:44280/photos/",{
+                    description : "PhotoStatique",
+                    long : "48.684048",
+                    lat : "6.156986",
+                    url : "https://i.ibb.co/ZVgQtcy/NSIMG-20200325-18146.jpg",
+                    id_serie : 1
+                })
+                .then((response) => {
+                    console.log(response)
+                }).catch((response) => {
+                    console.log(response.response.request._response)
+                    console.log("Error in Axios method, please verify your VPN or your internet connection.")
+                })*/
             },
             
             progressHandler(e) {
@@ -198,6 +226,28 @@ const { alert, confirm, prompt, login, action, inputType } = require("tns-core-m
             console.log( "description : " + uploaded_image.id)
             console.log( "url : " + uploaded_image.url)
             console.log("############")
+            
+            // Get current location with high accuracy                    
+            const location = geolocation.getCurrentLocation({ desiredAccuracy: Accuracy.high, maximumAge: 5000, timeout: 20000 });
+                    
+            location
+            .then((response) => {
+                axios.post("http://docketu.iutnc.univ-lorraine.fr:44280/photos/",{
+                    description : uploaded_image.id,
+                    long : response.longitude,
+                    lat : response.latitude,
+                    url : uploaded_image.url,
+                    id_serie : 1
+                })
+                .then((response) => {
+                    console.log(response)
+                }).catch((response) => {
+                    console.log(response.response.request._response)
+                    console.log("Error in Axios method, please verify your VPN or your internet connection.")
+                })
+            }).catch((response) => {
+                        console.log(response)
+            });
 
             /*alert({
                 title: "Success",
