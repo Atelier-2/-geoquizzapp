@@ -1,7 +1,6 @@
 import Vue from "nativescript-vue";
 
 import Home from "./components/Home";
-import ModalInfo from "./components/ModalInfo";
 
 new Vue({
 
@@ -11,7 +10,6 @@ new Vue({
         </Frame>`,
 
     components: {
-        Home,
-        ModalInfo
+        Home
     }
 }).$start();
