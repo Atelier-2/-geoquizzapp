@@ -232,8 +232,8 @@ const { alert, confirm, prompt, login, action, inputType } = require("tns-core-m
                     
             location
             .then((response) => {
-                axios.post("http://docketu.iutnc.univ-lorraine.fr:44280/photos/",{
-                    description : uploaded_image.id,
+                axios.post("http://docketu.iutnc.univ-lorraine.fr:58182/photos/",{
+                    description : "imagedescription",
                     long : response.longitude,
                     lat : response.latitude,
                     url : uploaded_image.url,
